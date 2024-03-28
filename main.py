@@ -2,6 +2,7 @@ import pygame
 import random
 import math
 from pygame.locals import QUIT
+from typing import TypeVar, Callable
 
 
 def mark_pixel(surface: pygame.Surface, pos: tuple[int, int], plane: int) -> None:
@@ -112,6 +113,7 @@ def main(width: int, height: int, n: int, r: float) -> None:
     pygame.display.set_caption('Chaos Simulation')
 
     polygon = init_polygon(width, height, n)
+    pygame.draw.polygon(surface, (50, 50, 50), polygon, 1)
     x = [float(random.randint(0, width)) for _ in range(3)]
     y = [float(random.randint(0, height)) for _ in range(3)]
     plane_randomness = [0.02, 0.04, 0.08]
@@ -128,7 +130,8 @@ def main(width: int, height: int, n: int, r: float) -> None:
 
             if 0 <= x[plane_idx] <= width and 0 <= y[plane_idx] <= height:
                 mark_pixel(
-                    surface, (int(x[plane_idx]), int(y[plane_idx])), plane_idx)
+                    surface, (int(x[plane_idx]), int(y[plane_idx])), plane_idx
+                )
 
         if step % 5000 == 0:
             pygame.display.update()
@@ -140,14 +143,73 @@ def main(width: int, height: int, n: int, r: float) -> None:
                 return
 
 
-if __name__ == "__main__":
-    n = int(input("Enter the number of sides of the polygon: "))
-    r_input = input("Enter the ratio ('optimal' for optimal ratio): ")
+T = TypeVar('T')
 
-    if r_input == 'optimal':
+
+def safe_input(prompt: str, parser: Callable[[str], T]) -> T:
+    """
+    Safely parse the input from the user.
+    Args:
+        prompt: Message to display to the user.
+        parser: Type to parse the input.
+    Returns:
+        Parsed input from the user.
+    """
+    while True:
+        try:
+            return parser(input(prompt))
+        except Exception as e:
+            print(e)
+            continue
+
+
+def side_parser(input: str) -> int:
+    """
+    Parse the input for the number of sides.
+    Args:
+        input: Input string from the user.
+    Returns:
+        Parsed number of sides.
+    """
+    try:
+        parsed = int(input)
+        if parsed <= 2:
+            raise ValueError("Number of sides must be greater than 2.")
+        return parsed
+    except ValueError:
+        raise ValueError("Invalid input for the ratio.")
+
+
+def ratio_parser(n: int, input: str) -> float:
+    """
+    Parse the input for the ratio.
+    Args:
+        input: Input string from the user.
+    Returns:
+        Parsed ratio value.
+    """
+    if input == 'optimal':
+        return calculate_optimal_ratio(n)
+    try:
+        parsed = float(input)
+        if parsed <= 0 or parsed >= 1:
+            raise ValueError("Ratio must be between 0 and 1.")
+        return parsed
+    except ValueError:
+        raise ValueError("Invalid input for the ratio.")
+
+
+if __name__ == "__main__":
+    n = safe_input("Enter the number of sides for the polygon: ", side_parser)
+    ratio = safe_input(
+        "Enter the ratio for the simulation (or 'optimal' for the optimal ratio): ",
+        lambda s: ratio_parser(n, s)
+    )
+
+    if ratio == 'optimal':
         r = calculate_optimal_ratio(n)
     else:
-        r = float(r_input)
+        r = float(ratio)
 
     print(f"Starting chaos simulation - sides: {n}, ratio: {r}.")
     main(800, 800, n, r)
